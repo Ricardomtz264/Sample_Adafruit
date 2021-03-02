@@ -82,7 +82,7 @@
 #define EXAMPLE_MQTT_SERVER_HOST "io.adafruit.com"
 
 #define EXAMPLE_MQTT_USER "richie264"
-#define EXAMPLE_MQTT_PSWD "aio_OUwk07OJGcbMU8ODZFfOB0NsSTm0"
+#define EXAMPLE_MQTT_PSWD "aio_xuxg27cNoipJT5ybEWXf2Q3DQqrt"
 
 /*! @brief MQTT server port number. */
 #define EXAMPLE_MQTT_SERVER_PORT 1883
@@ -225,8 +225,8 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
  */
 static void mqtt_subscribe_topics(mqtt_client_t *client)
 {
-    static const char *topics[] = {"richie264/feeds/activation"};
-    int qos[]                   = {0};
+    static const char *topics[] = {"richie264/feeds/gas-regular-act", "richie264/feeds/gas-diesel-act"};
+    int qos[]                   = {0, 0};
     err_t err;
     int i;
 
@@ -330,7 +330,7 @@ static void mqtt_message_published_cb(void *arg, err_t err)
  */
 static void publish_humidity(void *ctx)
 {
-    static const char *topic   = "richie264/feeds/oil";
+    static const char *topic   = "richie264/feeds/gas-regular-capacity";
     static char message[10];
 
     LWIP_UNUSED_ARG(ctx);
