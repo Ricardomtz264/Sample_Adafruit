@@ -34,6 +34,7 @@ processor_version: 2.0.0
 #define PIN17_IDX                       17u   /*!< Pin number for pin 17 in a port */
 #define PIN18_IDX                       18u   /*!< Pin number for pin 18 in a port */
 #define PIN22_IDX                       22u   /*!< Pin number for pin 22 in a port */
+#define PIN26_IDX                       22u   /*!< Pin number for pin 26 in a port */
 #define SOPT5_UART0TXSRC_UART_TX      0x00u   /*!< UART 0 transmit data source select: UART0_TX pin */
 
 /*
@@ -71,6 +72,7 @@ BOARD_InitPins:
 void BOARD_InitPins(void) {
   CLOCK_EnableClock(kCLOCK_PortA);                           /* Port A Clock Gate Control: Clock enabled */
   CLOCK_EnableClock(kCLOCK_PortB);                           /* Port B Clock Gate Control: Clock enabled */
+  CLOCK_EnableClock(kCLOCK_PortE);                           /* Port E Clock Gate Control: Clock enabled */
   CLOCK_EnableClock(kCLOCK_PortC);                           /* Port C Clock Gate Control: Clock enabled */
 
   PORT_SetPinMux(PORTA, PIN12_IDX, kPORT_MuxAlt4);           /* PORTA12 (pin 42) is configured as RMII0_RXD1 */
@@ -104,6 +106,7 @@ void BOARD_InitPins(void) {
   PORT_SetPinMux(PORTB, PIN16_IDX, kPORT_MuxAlt3);           /* PORTB16 (pin 62) is configured as UART0_RX */
   PORT_SetPinMux(PORTB, PIN17_IDX, kPORT_MuxAlt3);           /* PORTB17 (pin 63) is configured as UART0_TX */
   PORT_SetPinMux(PORTB, PIN22_IDX, kPORT_MuxAsGpio);         /* PORTB22 (pin 68) is configured as PTB22 */
+  PORT_SetPinMux(PORTE, PIN26_IDX, kPORT_MuxAsGpio);         /* PORTB22 (pin 68) is configured as PTB26 */
   PORT_SetPinMux(PORTC, PIN16_IDX, kPORT_MuxAlt4);           /* PORTC16 (pin 90) is configured as ENET0_1588_TMR0 */
   PORT_SetPinMux(PORTC, PIN17_IDX, kPORT_MuxAlt4);           /* PORTC17 (pin 91) is configured as ENET0_1588_TMR1 */
   PORT_SetPinMux(PORTC, PIN18_IDX, kPORT_MuxAlt4);           /* PORTC18 (pin 92) is configured as ENET0_1588_TMR2 */
@@ -113,6 +116,7 @@ void BOARD_InitPins(void) {
     );
   /* PORTB22 (pin 68) is configured as PTB22 */
   PORT_SetPinMux(PORTB, 22U, kPORT_MuxAsGpio);
+  PORT_SetPinMux(PORTE, 26U, kPORT_MuxAsGpio);
 }
 
 /*******************************************************************************
