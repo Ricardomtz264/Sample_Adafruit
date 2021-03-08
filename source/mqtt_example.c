@@ -84,7 +84,7 @@
 #define EXAMPLE_MQTT_SERVER_HOST "io.adafruit.com"
 
 #define EXAMPLE_MQTT_USER "richie264"
-#define EXAMPLE_MQTT_PSWD "aio_KTvG48fQzS0XBbLMrzaa74u9PcZg"
+#define EXAMPLE_MQTT_PSWD "aio_LBBx44gU2I2xlt2Po5VJD4mEKQ29"
 
 /*! @brief MQTT server port number. */
 #define EXAMPLE_MQTT_SERVER_PORT 1883
@@ -117,7 +117,7 @@ static int32_t get_simulated_sensor(int32_t current_value, int32_t max_step,
 							 bool increase);
 static void sensor_timer_callback(TimerHandle_t pxTimer);
 static void gas_regular_capacity(void *ctx);
-
+static void gas_diesel_capacity(void *ctx);
 
 /*******************************************************************************
  * Variables
@@ -152,8 +152,10 @@ EventGroupHandle_t xEventGroup;
 
 TimerHandle_t xTimerSensor;
 
-uint32_t humidity_sensor = 50;
+uint32_t humidity_sensor = 10000;
+uint32_t humidity_sensor_2 = 10000;
 uint32_t samples_cnt = 0;
+uint32_t samples_cnt_2 = 0;
 bool sprinklers_on;
 bool sprinklers_on_2;
 
@@ -210,46 +212,21 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
         }
     }
 
-    if(!memcmp(data, "On", 2)) {
+    if(!memcmp(data, "On_1", 4)) {
     	sprinklers_on = true;
     	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT);
     }
-    else if(!memcmp(data, "Off", 3)) {
+    else if(!memcmp(data, "Off_1", 5)) {
     	sprinklers_on = false;
     	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT);
     }
-
-    if (flags & MQTT_DATA_FLAG_LAST)
-    {
-        PRINTF("\"\r\n");
-    }
-}
-
-static void mqtt_incoming_data_cb_2(void *arg, const u8_t *data, u16_t len, u8_t flags)
-{
-    int i;
-
-    LWIP_UNUSED_ARG(arg);
-
-    for (i = 0; i < len; i++)
-    {
-        if (isprint(data[i]))
-        {
-            PRINTF("%c", (char)data[i]);
-        }
-        else
-        {
-            PRINTF("\\x%02x", data[i]);
-        }
-    }
-
-    if(!memcmp(data, "On", 2)) {
+    else if(!memcmp(data, "On_2", 4)) {
     	sprinklers_on_2 = true;
-    	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT_2);
+    	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT);
     }
-    else if(!memcmp(data, "Off", 3)) {
+    else if(!memcmp(data, "Off_2", 5)) {
     	sprinklers_on_2 = false;
-    	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT_2);
+    	xEventGroupSetBits(xEventGroup,	MQTT_SPRINKLERS_EVT);
     }
 
     if (flags & MQTT_DATA_FLAG_LAST)
@@ -261,39 +238,14 @@ static void mqtt_incoming_data_cb_2(void *arg, const u8_t *data, u16_t len, u8_t
 /*!
  * @brief Subscribe to MQTT topics.
  */
-static void mqtt_gas_regular_act(mqtt_client_t *client)
+static void mqtt_topics(mqtt_client_t *client)
 {
-    static const char *topics[] = {"richie264/feeds/gas-regular-act"};
-    int qos[]                   = {0};
+    static const char *topics[] = {"richie264/feeds/gas-regular-act", "richie264/feeds/gas-diesel-act"};
+    int qos[]                   = {0, 0};
     err_t err;
     int i;
 
     mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb,
-                            LWIP_CONST_CAST(void *, &mqtt_client_info));
-
-    for (i = 0; i < ARRAY_SIZE(topics); i++)
-    {
-        err = mqtt_subscribe(client, topics[i], qos[i], mqtt_topic_subscribed_cb, LWIP_CONST_CAST(void *, topics[i]));
-
-        if (err == ERR_OK)
-        {
-            PRINTF("Subscribing to the topic \"%s\" with QoS %d...\r\n", topics[i], qos[i]);
-        }
-        else
-        {
-            PRINTF("Failed to subscribe to the topic \"%s\" with QoS %d: %d.\r\n", topics[i], qos[i], err);
-        }
-    }
-}
-
-static void mqtt_gas_diesel_act(mqtt_client_t *client)
-{
-    static const char *topics[] = {"richie264/feeds/gas-diesel-act"};
-    int qos[]                   = {0};
-    err_t err;
-    int i;
-
-    mqtt_set_inpub_callback(client, mqtt_incoming_publish_cb, mqtt_incoming_data_cb_2,
                             LWIP_CONST_CAST(void *, &mqtt_client_info));
 
     for (i = 0; i < ARRAY_SIZE(topics); i++)
@@ -324,8 +276,8 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
     {
         case MQTT_CONNECT_ACCEPTED:
             PRINTF("MQTT client \"%s\" connected.\r\n", client_info->client_id);
-            mqtt_gas_regular_act(client);
-            mqtt_gas_diesel_act(client);
+            mqtt_topics(client);
+            //mqtt_gas_diesel_act(client);
             xEventGroupSetBits(xEventGroup,	MQTT_CONNECTED_EVT);
             break;
 
@@ -407,21 +359,36 @@ static void gas_regular_capacity(void *ctx)
     mqtt_publish(mqtt_client, topic, message, strlen(message), 1, 0, mqtt_message_published_cb, (void *)topic);
 }
 
-static void publish_humidity(void *ctx)
+static void gas_diesel_capacity(void *ctx)
 {
-    static const char *topic   = "richie264/feeds/gas-regular-capacity";
+    static const char *topic   = "richie264/feeds/gas-diesel-capacity";
     static char message[10];
 
     LWIP_UNUSED_ARG(ctx);
 
     memset(message, 0, 10);
-    sprintf(message, "%d", humidity_sensor);
+    sprintf(message, "%d", humidity_sensor_2);
 
     PRINTF("Going to publish to the topic \"%s\"...\r\n", topic);
 
     mqtt_publish(mqtt_client, topic, message, strlen(message), 1, 0, mqtt_message_published_cb, (void *)topic);
 }
+/*
+static void active_LED_Red(void *ctx)
+{
+    static const char *topic   = "richie264/feeds/gas-diesel-capacity";
+    static char message[10];
 
+    LWIP_UNUSED_ARG(ctx);
+
+    memset(message, 0, 10);
+    sprintf(message, "%d", humidity_sensor_2);
+
+    PRINTF("Going to publish to the topic \"%s\"...\r\n", topic);
+
+    mqtt_publish(mqtt_client, topic, message, strlen(message), 1, 0, mqtt_message_published_cb, (void *)topic);
+}
+*/
 /*!
  * @brief Application thread.
  */
@@ -513,7 +480,7 @@ static void app_thread(void *arg)
 		// the event group.  Clear the bits before exiting.
 		uxBits = xEventGroupWaitBits(
 					xEventGroup,	// The event group being tested.
-					MQTT_CONNECTED_EVT | MQTT_SENSOR_EVT | MQTT_SPRINKLERS_EVT | MQTT_SPRINKLERS_EVT_2 | MQTT_DISCONNECTED_EVT,	// The bits within the event group to wait for.
+					MQTT_CONNECTED_EVT | MQTT_SENSOR_EVT | MQTT_SPRINKLERS_EVT | MQTT_DISCONNECTED_EVT,	// The bits within the event group to wait for.
 					pdTRUE,			// BIT_0 and BIT_4 should be cleared before returning.
 					pdFALSE,		// Don't wait for both bits, either bit will do.
 					xTicksToWait );	// Wait a maximum of 100ms for either bit to be set.
@@ -529,7 +496,8 @@ static void app_thread(void *arg)
 			PRINTF("MQTT_SENSOR_EVT.\r\n");
 			// Simulate the humidity %, in steps of 5, range is 10% to 100%.
 			// If the sprinkler is On, the humidity will tent to rise.
-			humidity_sensor = get_simulated_sensor(humidity_sensor, 2, 10, 100, sprinklers_on);
+			humidity_sensor = get_simulated_sensor(humidity_sensor, 5, 1, 100, sprinklers_on);
+			humidity_sensor_2 = get_simulated_sensor(humidity_sensor_2, 5, 1, 100, sprinklers_on_2);
 			if((samples_cnt++%10) == 9){
 				err = tcpip_callback(gas_regular_capacity, NULL);
 				if (err != ERR_OK)
@@ -537,24 +505,35 @@ static void app_thread(void *arg)
 					PRINTF("Failed to invoke gas_regular_capacity on the tcpip_thread: %d.\r\n", err);
 				}
 			}
+			if((samples_cnt_2++%10) == 9){
+				err = tcpip_callback(gas_diesel_capacity, NULL);
+				if (err != ERR_OK)
+				{
+					PRINTF("Failed to invoke gas_diesel_capacity on the tcpip_thread: %d.\r\n", err);
+				}
+			}
 		}
 		else if(uxBits & MQTT_SPRINKLERS_EVT ) {
 			PRINTF("MQTT_SPRINKLERS_EVT.\r\n");
-			if(sprinklers_on){
+
+			if(sprinklers_on==true && sprinklers_on_2==true){
 				GPIO_PortClear(BOARD_LED_R_GPIO, 1u << BOARD_LED_R_GPIO_PIN);
-			}
-			else {
-				GPIO_PortSet(BOARD_LED_R_GPIO, 1u << BOARD_LED_R_GPIO_PIN);
-			}
-		}
-		else if(uxBits & MQTT_SPRINKLERS_EVT_2 ) {
-			PRINTF("MQTT_SPRINKLERS_EVT_2.\r\n");
-			if(sprinklers_on){
 				GPIO_PortClear(BOARD_LED_G_GPIO, 1u << BOARD_LED_G_GPIO_PIN);
 			}
-			else {
+			else if(sprinklers_on==true && sprinklers_on_2==false){
+				GPIO_PortClear(BOARD_LED_R_GPIO, 1u << BOARD_LED_R_GPIO_PIN);
 				GPIO_PortSet(BOARD_LED_G_GPIO, 1u << BOARD_LED_G_GPIO_PIN);
 			}
+			else if(sprinklers_on==false && sprinklers_on_2==true){
+				GPIO_PortSet(BOARD_LED_R_GPIO, 1u << BOARD_LED_R_GPIO_PIN);
+				GPIO_PortClear(BOARD_LED_G_GPIO, 1u << BOARD_LED_G_GPIO_PIN);
+
+			}
+			else if(sprinklers_on==false && sprinklers_on_2==false){
+				GPIO_PortSet(BOARD_LED_R_GPIO, 1u << BOARD_LED_R_GPIO_PIN);
+				GPIO_PortSet(BOARD_LED_G_GPIO, 1u << BOARD_LED_G_GPIO_PIN);
+			}
+
 		}
 		else if(uxBits & MQTT_DISCONNECTED_EVT ) {
 			PRINTF("MQTT_DISCONNECTED_EVT.\r\n");
